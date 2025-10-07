@@ -1,0 +1,7 @@
+ansible_user : ar4
+ansible_port : 7681
+
+#owner        : AndyRey
+#location     : Moscow
+#db_endpoint : xxxxx.yyyyyy.com:4151
+

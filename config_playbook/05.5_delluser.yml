@@ -1,0 +1,34 @@
+---
+- name: Remove user from system
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Удаление пользователя ar5 и его домашней директории
+        - name: Remove user ar5 with home directory
+          user:
+            name: ar5
+            state: absent
+            remove: yes
+      tags: remove-user
+
+    - block:
+        # Проверка что пользователь ar5 удален из системы
+        - name: Check ar5 user removed from /etc/passwd
+          command: grep '^ar5:' /etc/passwd
+          register: ar5_passwd_check
+          changed_when: false
+          ignore_errors: yes
+
+        # Вывод результата проверки удаления
+        - name: Display removal result
+          debug:
+            msg: |
+              {% if ar5_passwd_check.stdout %}
+              -------> Пользователь ar5 все еще существует в системе! <-------
+              {% else %}
+              -------> Пользователь ar5 успешно удален из системы <-------
+              {% endif %}
+      tags: verify-removal
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 05.5_delluser.yml --ask-become-pass

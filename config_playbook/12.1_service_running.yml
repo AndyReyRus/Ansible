@@ -1,0 +1,16 @@
+---
+- name: Show running services
+  hosts: prox-vm-test-ansible
+  #become: yes
+
+  tasks:
+    - block:
+        # Смотрим все запущенные сервисы
+        - name: Show running services
+          command: systemctl list-units --type=service --state=running
+          register: running_services
+
+        - name: Display running services
+          debug:
+            msg: "{{ running_services.stdout_lines }}"
+      tags: show-services

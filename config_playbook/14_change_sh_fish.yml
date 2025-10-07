@@ -1,0 +1,28 @@
+---
+- name: Change user shell to fish
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  vars:
+    target_user: ar4
+
+  tasks:
+    - block:
+        # Проверка версии установленного fish
+        - name: Get installed fish shell version
+          command: fish --version
+          register: fish_version
+
+        - name: Display installed fish shell version
+          debug:
+            msg: "{{ fish_version.stdout_lines }}"
+      tags: check-fish-version
+
+    - block:
+        # Смена оболочки пользователя на fish
+        - name: Change default shell to fish for user {{ target_user }}
+          user:
+            name: "{{ target_user }}"
+            shell: /usr/bin/fish # Заменить путь если fish установлен в другом месте
+      tags: change-shell-to-fish
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 14_change_sh_fish.yml --ask-become-pass

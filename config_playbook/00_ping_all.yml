@@ -1,0 +1,11 @@
+---
+- name: Test Connection to my servers
+  hosts: all
+  #become: yes
+
+  tasks:
+    - block:
+        # Тестирование подключения ко всем серверам
+        - name: Ping my servers
+          ping:
+      tags: ping

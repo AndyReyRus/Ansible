@@ -1,0 +1,25 @@
+---
+- name: Change hostname
+  hosts: prox-vm-test-ansible
+  become: yes
+  vars:
+    new_hostname: "sv-nuxt1" # <--------------------------------- Укажи переменную hostname для конкретного хоста!
+
+  tasks:
+    - block:
+        # Устанавливаем новое имя хоста
+        - name: Set new hostname
+          hostname:
+            name: "{{ new_hostname }}"
+
+        # Проверяем новое имя хоста
+        - name: Verify new hostname
+          command: hostnamectl status
+          register: hostname_status
+
+        # Выводим информацию о хосте
+        - name: Display hostname status
+          debug:
+            var: hostname_status.stdout_lines
+      tags: change-hostname
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 01.5_sys_edit_hostname.yml --ask-become-pass

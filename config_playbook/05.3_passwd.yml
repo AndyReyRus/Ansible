@@ -1,0 +1,21 @@
+---
+- name: Get complete passwd file
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Получение полного содержимого файла /etc/passwd
+        - name: Get entire passwd file
+          command: cat /etc/passwd
+          register: full_passwd
+          changed_when: false
+
+        # Вывод полного содержимого /etc/passwd
+        - name: Display full passwd file
+          debug:
+            msg: "{{ item }}"
+          loop: "{{ full_passwd.stdout_lines }}"
+          tags: debug
+      tags: full-passwd
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 04_change_pass.yml --ask-become-pass

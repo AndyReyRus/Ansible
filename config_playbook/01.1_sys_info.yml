@@ -1,0 +1,98 @@
+---
+- name: Test Connection and gather basic system info
+  hosts: prox-vm-test-ansible
+  #hosts: all
+  #become: yes
+
+  tasks:
+    - block:
+        # Проверка подключения к серверу с выводом
+        - name: Ping server
+          ping:
+
+        - name: Display ping result
+          debug:
+            msg: "PPPPPPPPP-PPPPPPP-PPPPP-PPP-Ping successful <------------------------"
+      tags: ping
+
+    - block:
+        # Получение и вывод информации о ядре ОС
+        - name: Get kernel version
+          command: uname -r
+          register: kernel_version
+
+        - name: Display kernel version
+          debug:
+            msg: "Kernel: {{ kernel_version.stdout }}"
+      tags: uname-info
+
+    - block:
+        # Получение и вывод информации о текущем пользователе
+        - name: Get current user
+          command: whoami
+          register: current_user
+
+        - name: Display current user
+          debug:
+            msg: "User: {{ current_user.stdout }}"
+      tags: whoami-info
+
+    - block:
+        # Получение и вывод текущей рабочей директории
+        - name: Get current directory
+          command: pwd
+          register: current_dir
+
+        - name: Display current directory
+          debug:
+            msg: "Directory: {{ current_dir.stdout }}"
+      tags: pwd-info
+
+    - block:
+        # Получение и вывод информации о дисковом пространстве
+        - name: Check disk space
+          command: df -h
+          register: disk_space
+
+        - name: Display disk space
+          debug:
+            msg: "{{ disk_space.stdout_lines }}"
+      tags: df-info
+
+    - block:
+        # Получение и вывод информации об использовании памяти
+        - name: Check memory usage
+          command: free -h
+          register: memory_usage
+
+        - name: Display memory usage
+          debug:
+            msg: "{{ memory_usage.stdout_lines }}"
+      tags: free-info
+
+    - block:
+        # Получение и вывод uptime системы
+        - name: Get system uptime
+          command: uptime
+          register: system_uptime
+
+        - name: Display system uptime
+          debug:
+            msg: "Uptime: {{ system_uptime.stdout }}"
+      tags: uptime-info
+
+    - block:
+        # Получение и вывод списка запущенных сервисов
+        - name: Show running services
+          command: systemctl list-units --type=service --state=running
+          register: running_services
+
+        - name: Display running services
+          debug:
+            msg: "{{ running_services.stdout_lines }}"
+      tags: services-running
+# Что бы вывести информацию только по одному конкретному блоку, вводим команду
+#                                                                              - ansible-playbook 01_sys_info.yml --tags "uname-info"
+#                                                                              - ansible-playbook 01_sys_info.yml --tags "whoami-info"
+#                                                                              - ansible-playbook 01_sys_info.yml --tags "free-info"
+#                                                                              - ansible-playbook 01_sys_info.yml --tags "services-running"

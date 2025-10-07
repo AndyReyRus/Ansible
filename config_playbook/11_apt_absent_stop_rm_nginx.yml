@@ -1,0 +1,25 @@
+---
+- name: Install packages
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Останавливаем и убираем из автозагрузки сервис nginx
+        - name: Stop Nginx and disable on boot
+          service:
+            name: nginx
+            state: stopped
+            enabled: no
+
+        # Удаляем необходимыне пакеты
+        - name: Remove nginx related packages
+          apt:
+            name:
+              - nginx
+              - apache2-utils
+              - certbot
+              - python3-certbot-nginx
+            state: absent
+      tags: remove-
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 11_apt_absent_stop_rm_nginx.yml --ask-become-pass

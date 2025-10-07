@@ -1,0 +1,30 @@
+---
+- name: Configure IP forwarding in sysctl
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Редактируем sysctl.conf - включаем IP forwarding
+        - name: Enable IP forwarding in sysctl.conf
+          lineinfile:
+            path: /etc/sysctl.conf #              Путь к файлу который редактируем
+            regex: "^#?net.ipv4.ip_forward=" #    Регулярка для поиска строки (с # или без)
+            line: "net.ipv4.ip_forward=1" #       Какая строка должна быть в результате
+            state: present #                      Гарантировать что строка присутствует
+
+        # Применяем настройки немедленно
+        - name: Apply IP forwarding immediately
+          command: sysctl -p /etc/sysctl.conf
+
+        # Проверяем текущее значение IP forwarding
+        - name: Check current IP forwarding value
+          command: cat /proc/sys/net/ipv4/ip_forward
+          register: ip_forward_check
+
+        # Выводим результат проверки
+        - name: Display IP forwarding status
+          debug:
+            var: ip_forward_check.stdout
+      tags: configure-ip-forwarding
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 21_ip_forward.yml --ask-become-pass

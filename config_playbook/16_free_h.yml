@@ -1,0 +1,43 @@
+---
+- name: Install packages
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Смотрим состояние памяти и наличие раздела памяти swap
+        - name: Check available memory and swap usage
+          command: free -h
+          register: free_output
+
+        # Выводим информацию о памяти в столбик
+        - name: Display free memory and swap info
+          debug:
+            var: free_output.stdout_lines
+      tags: check-memory
+
+    - block:
+        # Проверяем активные swap устройства
+        - name: Show swap usage details
+          command: swapon --show
+          register: swapon_output
+          failed_when: false # Чтобы playbook не прерывался, если swap не включен
+
+        # Выводим информацию о swap устройствах
+        - name: Display swap devices
+          debug:
+            var: swapon_output.stdout_lines
+      tags: check-swapon
+
+    - block:
+        # Проверяем значение swappiness
+        - name: Show swappiness value
+          command: cat /proc/sys/vm/swappiness
+          register: swappiness_output
+
+        # Выводим значение swappiness
+        - name: Display swappiness value
+          debug:
+            var: swappiness_output.stdout
+      tags: check-swappiness
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 16_free_h.yml --ask-become-pass

@@ -1,0 +1,110 @@
+---
+- name: System update and install docker via the official installation script.
+  hosts: prox-vm-test-ansible
+  # hosts: all
+  become: yes
+
+  tasks:
+    - block:
+        # Обновляем индекс локального репозитория
+        - name: Update apt package cache
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+      tags: update-cache
+
+    - block:
+        # Устанавливаем необходимые пакеты
+        - name: Install prerequisite packages
+          apt:
+            name:
+              - ca-certificates
+              - curl
+            state: latest
+      tags: install-prerequisites
+
+    - block:
+        # Создаём директорию для хранения ключей репозитория
+        - name: Create directory for Docker keyrings
+          file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: "0755"
+
+        # Скачиваем GPG-ключ Docker в специально отведённую папку и выдаем на нее права
+        - name: Download Docker GPG key
+          get_url:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            dest: /etc/apt/keyrings/docker.asc
+            mode: "0644"
+
+        # Добавляем официальный репозиторий Docker в систему, используя ранее скачанный ключ для подписи
+        - name: Add Docker repository to apt sources
+          apt_repository:
+            repo: "deb [arch={{ ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+            filename: docker
+            state: present
+            update_cache: yes
+      tags: setup-docker-repo
+
+    - block:
+        # Устанавливаем основные пакеты Docker
+        - name: Install Docker packages
+          apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-buildx-plugin
+              - docker-compose-plugin
+            state: latest
+
+        # Проверяем установленные версии Docker
+        - name: Check docker version
+          command: docker --version
+          register: docker_version
+          changed_when: false
+
+        - name: Display docker version
+          debug:
+            var: docker_version.stdout
+
+        # Проверяем установленные версии Docker Compose
+        - name: Check docker compose version
+          command: docker compose version
+          register: docker_compose_version
+          changed_when: false
+
+        - name: Display docker compose version
+          debug:
+            var: docker_compose_version.stdout
+      tags: install-docker
+
+    - block:
+        # Добавляем пользователя ar4 в группу docker
+        - name: Add user ar4 to docker group
+          user:
+            name: ar4
+            groups: docker
+            append: yes
+
+        # Проверяем в каких группах состоит пользователь ar4
+        - name: Check groups for user ar4
+          command: groups ar4
+          register: user_groups
+          changed_when: false
+
+        - name: Display groups for user ar4
+          debug:
+            var: user_groups.stdout
+      tags: user_group_docker
+
+    - block:
+        # Запускаем и ставим в автозагрузку сервис Docker
+        - name: Ensure Docker service is started and enabled
+          systemd:
+            name: docker
+            state: started
+            enabled: yes
+      tags: start-docker-service
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 15.1_docker_install.yml --ask-become-pass

@@ -1,0 +1,129 @@
+---
+- name: System update and user setup
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  vars:
+    ssh_user: ar4
+    ssh_port: 7681
+    sshd_config_path: /etc/ssh/sshd_config
+    cloud_init_conf: /etc/ssh/sshd_config.d/50-cloud-init.conf
+
+  tasks:
+    - block:
+        # Настройка прав доступа для SSH директории и файлов
+        - name: Set correct permissions on ~/.ssh directory
+          file:
+            path: "/home/{{ ssh_user }}/.ssh"
+            state: directory
+            mode: "0700"
+            owner: "{{ ssh_user }}"
+            group: "{{ ssh_user }}"
+
+        # Установка прав на файл authorized_keys
+        - name: Set correct permissions on authorized_keys
+          file:
+            path: "/home/{{ ssh_user }}/.ssh/authorized_keys"
+            state: file
+            mode: "0600"
+            owner: "{{ ssh_user }}"
+            group: "{{ ssh_user }}"
+
+        # Вывод содержимого директории ~/.ssh
+        - name: List ~/.ssh contents
+          command: ls -la /home/{{ ssh_user }}/.ssh
+          register: ssh_dir_list
+
+        - name: Show contents of ~/.ssh directory
+          debug:
+            msg: "{{ ssh_dir_list.stdout_lines }}"
+      tags: ssh-permissions
+
+    - block:
+        # Создание резервной копии sshd_config
+        - name: Backup existing sshd_config
+          copy:
+            src: "{{ sshd_config_path }}"
+            dest: "{{ sshd_config_path }}.backup_{{ ansible_date_time.iso8601_basic }}"
+            remote_src: yes
+          when: ansible_facts['os_family'] != 'Windows'
+
+        # Развертывание sshd_config из шаблона
+        - name: Deploy sshd_config from template
+          template:
+            src: 06_sshd_config.j2
+            dest: "{{ sshd_config_path }}"
+            owner: root
+            group: root
+            mode: "0644"
+            backup: yes
+            # validate: '/usr/sbin/sshd -t -f %s'  # Debian/Ubuntu - Может вызвать ошибки потому что - путь может отличаться на разных системах
+            # validate: '/usr/sbin/sshd -t -f %s'  # CentOS/RHEL
+          notify: Restart ssh
+      tags: ssh-config
+
+    - block:
+        # Проверка наличия конфигурационного файла cloud-init
+        - name: Check if cloud-init sshd config file exists
+          stat:
+            path: "{{ cloud_init_conf }}"
+          register: cloud_init_conf_stat
+
+        # Замена конфигурации cloud-init если файл существует
+        - name: Replace cloud-init sshd config file, if it exists
+          copy:
+            dest: "{{ cloud_init_conf }}"
+            content: |
+              # Managed by Ansible
+              Port {{ ssh_port }}
+              PermitRootLogin no
+              AllowUsers {{ ssh_user }}
+              # Authentication
+              PubkeyAuthentication yes
+              AuthorizedKeysFile .ssh/authorized_keys
+              PasswordAuthentication no
+              PermitEmptyPasswords no
+              ClientAliveInterval 300
+              ClientAliveCountMax 3
+              # Security hardening          - Общие настройки безопасности
+              # Protocol 2                          # Использовать только SSH protocol 2 (более безопасный)
+              # HostbasedAuthentication no          # Отключить аутентификацию по хосту (устаревший метод)
+              # IgnoreRhosts yes                    # Игнорировать файлы .rhosts и .shosts (устаревшие)
+              # X11Forwarding no                    # Отключить X11 forwarding (графические приложения)
+              # PrintMotd no                        # Не показывать Message of the Day при входе
+              # PrintLastLog yes                    # Показывать время последнего входа
+              # TCPKeepAlive yes                    # Поддерживать TCP соединение alive
+              # MaxAuthTries 3                      # Максимум 3 попытки аутентификации
+              # MaxSessions 5                       # Максимум 5 одновременных SSH сессий
+              # LoginGraceTime 60                   # Таймаут аутентификации 60 секунд
+            owner: root
+            group: root
+            mode: "0644"
+          when: cloud_init_conf_stat.stat.exists
+          notify: Restart ssh
+      tags: cloud-init-config
+
+    - block:
+        # Остановка и отключение ssh.socket
+        - name: Stop and disable ssh.socket if active
+          systemd:
+            name: ssh.socket
+            state: stopped
+            enabled: no
+          ignore_errors: yes
+
+        # Запуск и включение ssh.service
+        - name: Ensure ssh service is started and enabled
+          systemd:
+            name: ssh
+            state: started
+            enabled: yes
+
+  # Перезапускаем ssh сервис при изменениях конфигурации
+  handlers:
+    - name: Restart ssh
+      systemd:
+        name: ssh
+        state: restarted
+# Рабочий вариант с созданием бэкапа и заменой основного конфига sshd_config
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 06.1_ssh_settings_j2.yml --ask-become-pass

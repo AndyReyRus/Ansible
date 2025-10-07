@@ -1,0 +1,41 @@
+---
+- name: Show contents of sshd_config file line by line and user configs
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Смотрим содержимое основного sshd_config
+        - name: Read /etc/ssh/sshd_config
+          command: cat /etc/ssh/sshd_config
+          register: sshd_config_cat
+
+        - name: Display sshd_config content line by line
+          debug:
+            msg: "{{ sshd_config_cat.stdout_lines }}"
+      tags: main-ssh-config
+
+    - block:
+        # Проверяем существование директории sshd_config.d
+        - name: Check if sshd_config.d directory exists
+          stat:
+            path: /etc/ssh/sshd_config.d
+          register: sshd_config_d_dir
+
+        # Если директория существует, выводим все конфиги
+        - name: Display all user ssh configs
+          shell: |
+            for file in /etc/ssh/sshd_config.d/*.conf; do
+              echo "=== $file ==="
+              cat "$file"
+              echo "---"
+            done
+          register: all_configs
+          when: sshd_config_d_dir.stat.exists
+
+        - name: Show all configs content
+          debug:
+            msg: "{{ all_configs.stdout_lines }}"
+          when: sshd_config_d_dir.stat.exists
+      tags: user-ssh-config
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 07.3_cat_sshd_conf_all.yml --ask-become-pass

@@ -1,0 +1,18 @@
+---
+- name: Check current hostname
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Смотрим текущее имя хоста
+        - name: Read current hostname
+          command: cat /etc/hostname
+          register: current_hostname
+
+        # Выводим текущее имя хоста
+        - name: Display current hostname
+          debug:
+            var: current_hostname.stdout
+      tags: check-hostname
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 01.4_sys_cat_hostname.yml --ask-become-pass

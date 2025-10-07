@@ -1,0 +1,44 @@
+---
+- name: System update and user setup
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Проверка пользователя ar5 в системе
+        - name: Show ar5 user entry from /etc/passwd
+          command: grep '^ar5:' /etc/passwd
+          register: ar5_passwd
+          changed_when: false
+          ignore_errors: yes
+
+        # Вывод информации о пользователе ar5
+        - name: Display passwd entry for ar5
+          debug:
+            msg: |
+              {% if ar5_passwd.stdout %}
+              User ar5 found: {{ ar5_passwd.stdout }}
+              {% else %}
+              -------> Пользователь ar5 не зарегистрирован в системе! <-------
+              {% endif %}
+      tags: user-verify
+
+    - block:
+        # Проверка групп пользователя ar5
+        - name: Get groups of user ar5
+          command: groups ar5
+          register: ar5_groups
+          changed_when: false
+          ignore_errors: yes
+
+        # Вывод групп пользователя ar5
+        - name: Display groups of ar5
+          debug:
+            msg: |
+              {% if ar5_groups.stdout %}
+              Groups for ar5: {{ ar5_groups.stdout }}
+              {% else %}
+              -------> Пользователь ar5 не состоит ни в каких группах! <-------
+              {% endif %}
+      tags: groups-verify
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 04_change_pass.yml --ask-become-pass

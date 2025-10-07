@@ -1,0 +1,19 @@
+---
+- name: Show running services
+  hosts: prox-vm-test-ansible
+  #become: yes
+
+  vars:
+    target_user: ar4
+
+  tasks:
+    - block:
+        # Проверяем версию установленного fish
+        - name: Get installed fish shell version
+          command: fish --version
+          register: fish_version
+
+        - name: Display installed fish shell version
+          debug:
+            msg: "{{ fish_version.stdout_lines }}"
+      tags: check-fish-version

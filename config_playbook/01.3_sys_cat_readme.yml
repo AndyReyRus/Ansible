@@ -1,0 +1,18 @@
+---
+- name: Install packages
+  hosts: prox-vm-test-ansible
+  #become: yes
+
+  tasks:
+    - block:
+        # Читаем содержимое README.md файла шрифтов
+        - name: Read README.md from fonts directory
+          command: cat /home/ar4/.local/share/fonts/README.md
+          register: readme_content
+
+        # Выводим содержимое README.md построчно
+        - name: Display README.md content
+          debug:
+            var: readme_content.stdout_lines
+      tags: cat-fonts-readme
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 01.3_sys_cat_readme.yml --ask-become-pass

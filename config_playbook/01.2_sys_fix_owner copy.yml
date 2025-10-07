@@ -1,0 +1,27 @@
+---
+- name: Install packages
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Исправляем владельца всех файлов шрифтов
+        - name: Fix font files ownership
+          file:
+            path: /home/ar4/.local/share/fonts
+            state: directory
+            recurse: yes
+            owner: ar4
+            group: ar4
+
+        # Проверяем права доступа после исправления
+        - name: Check font directory permissions
+          command: ls -la /home/ar4/.local/share/fonts
+          register: font_permissions
+
+        # Выводим список файлов с правами доступа
+        - name: Display font directory contents
+          debug:
+            var: font_permissions.stdout_lines
+      tags: fix-ownership
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 01.2_sys_fix_owner.yml --ask-become-pass

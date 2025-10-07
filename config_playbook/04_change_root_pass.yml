@@ -1,0 +1,19 @@
+---
+- name: System update and user setup
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  vars_prompt:
+    - name: root_password
+      prompt: "Enter new root password"
+      private: yes
+
+  tasks:
+    - block:
+        # Смена пароля пользователя root
+        - name: Changing password user root
+          user:
+            name: root
+            password: "{{ root_password | password_hash('sha512') }}"
+      tags: change-password
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 04_change_pass.yml --ask-become-pass

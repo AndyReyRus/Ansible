@@ -1,0 +1,17 @@
+---
+- name: Show contents of sshd_config file line by line
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Смотрим содержимое ваила sshd_config
+        - name: Read /etc/ssh/sshd_config
+          command: cat /etc/ssh/sshd_config
+          register: sshd_config_cat
+
+        - name: Display sshd_config content line by line
+          debug:
+            msg: "{{ sshd_config_cat.stdout_lines }}"
+      tags: main-ssh-config
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 07.1_cat_sshd_config.yml --ask-become-pass

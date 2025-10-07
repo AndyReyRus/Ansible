@@ -1,0 +1,63 @@
+---
+- name: Configure static IP via Netplan
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  vars:
+    interface: "eth0" #                  Имя сетевого интерфейса
+    static_ip: "192.168.1.100/24" #      Статический IP и маска
+    gateway: "192.168.1.1" #             Шлюз по умолчанию
+    dns_servers: #                       DNS серверы
+      - "8.8.8.8"
+      - "8.8.4.4"
+
+  tasks:
+    - block:
+        # Создаем резервную копию текущего netplan конфига
+        - name: Backup existing netplan config
+          copy:
+            src: /etc/netplan/50-cloud-init.yaml
+            dest: /etc/netplan/50-cloud-init.yaml.backup_{{ ansible_date_time.epoch }}
+            remote_src: yes
+          register: backup_result
+          failed_when: false # Продолжаем если файла нет
+      tags: backup-configure-static
+
+    - block:
+        # Создаем новый netplan конфиг со статическим IP
+        - name: Create static IP netplan config
+          copy:
+            dest: /etc/netplan/50-cloud-init.yaml
+            content: |
+              network:
+                version: 2
+                renderer: networkd
+                ethernets:
+                  {{ interface }}:
+                    dhcp4: no
+                    addresses:
+                      - {{ static_ip }}
+                    gateway4: {{ gateway }}
+                    nameservers:
+                      addresses:
+                        - {{ dns_servers[0] }}
+                        - {{ dns_servers[1] }}
+            mode: "0644"
+
+        # Применяем новую конфигурацию сети
+        - name: Apply netplan configuration
+          command: netplan apply
+      tags: apply-configure-static
+
+    - block:
+        # Проверяем новую сетевую конфигурацию
+        - name: Verify network configuration
+          command: ip addr show {{ interface }}
+          register: ip_check
+
+        # Выводим информацию о сетевом интерфейсе
+        - name: Display network interface info
+          debug:
+            var: ip_check.stdout_lines
+      tags: check-configure-static
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 20.1_add_static_vm.yml --ask-become-pass

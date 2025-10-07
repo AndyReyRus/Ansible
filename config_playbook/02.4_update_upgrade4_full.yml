@@ -1,0 +1,43 @@
+---
+- name: System update and user setup
+  hosts: prox-vm-test-ansible
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - block:
+        # Обновление кэша пакетов
+        - name: Update package cache
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+          tags: update
+
+        # Полное обновление всех пакетов (включая версию системы)
+        - name: Upgrade all packages
+          apt:
+            upgrade: full
+            autoremove: yes
+            autoclean: yes
+          tags: upgrade
+
+        # Проверка необходимости перезагрузки после обновления
+        - name: Check if reboot is required
+          stat:
+            path: /var/run/reboot-required
+          register: reboot_required
+          tags: check-reboot
+
+        # Перезагрузка системы если требуется
+        - name: Reboot if required
+          reboot:
+            msg: "Reboot initiated by Ansible for kernel updates"
+            connect_timeout: 5
+            reboot_timeout: 300
+            pre_reboot_delay: 0
+            post_reboot_delay: 30
+            test_command: uptime
+          when: reboot_required.stat.exists
+          tags: reboot
+      tags: system-update-upgrade
+# Данная инструкция должны выполняться с "ОСТОРОЖНОСТЬЮ" так как вносит значительные изменения в систему!

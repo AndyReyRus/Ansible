@@ -1,0 +1,33 @@
+---
+- name: System update and user setup
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Обновление кэша пакетов
+        - name: Update apt package cache
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+          tags: update
+
+        # Обновление пакетов системы
+        - name: Upgrade all packages
+          apt:
+            upgrade: yes
+            autoclean: yes
+          register: upgrade_result
+          tags: upgrade
+
+        # Вывод результатов обновления
+        - name: Show upgrade result
+          debug:
+            msg: |
+              Packages upgraded: {{ upgrade_result.upgraded | default([]) }}
+              Packages removed: {{ upgrade_result.removed | default([]) }}
+              Packages installed: {{ upgrade_result.installed | default([]) }}
+              Cache updated: {{ upgrade_result.cache_updated }}
+          tags: debug
+      tags: update-upgrade
+# Не проверенный конфиг - возможно не стоит использовать из за того что он сохраняет кеш.

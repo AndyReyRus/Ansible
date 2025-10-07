@@ -1,0 +1,28 @@
+---
+- name: System update and user setup
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Обновление кэша пакетов
+        - name: Update apt package cache
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+          tags: update
+
+        # Обновление пакетов системы
+        - name: Upgrade all packages
+          apt:
+            upgrade: yes
+            autoclean: yes
+          register: upgrade_result
+          tags: upgrade
+
+        # Вывод результатов обновления
+        - name: Show upgrade result
+          debug:
+            msg: "Packages changed: {{ upgrade_result.changed }}"
+          tags: debug
+      tags: update-upgrade

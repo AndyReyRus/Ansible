@@ -1,0 +1,58 @@
+---
+- name: Install packages
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  vars:
+    fish_config_path: "/home/ar4/.config/fish/config.fish"
+
+  tasks:
+    - block:
+        # Проверяем существование fish_config
+        - name: Check if fish config file exists
+          stat:
+            path: "{{ fish_config_path }}"
+          register: fish_config_stat
+
+        # Создаем резервную копию текущего fish_config с временной меткой
+        - name: Backup existing fish_config
+          copy:
+            src: "{{ fish_config_path }}"
+            dest: "{{ fish_config_path }}.backup_{{ ansible_date_time.iso8601_basic }}"
+            remote_src: yes
+          when: fish_config_stat.stat.exists
+      tags: backup-fish-config
+
+    - block:
+        # Создаем и устанавливаем права на директорию
+        - name: Ensure fish config directory exists
+          file:
+            path: "/home/ar4/.config/fish"
+            state: directory
+            owner: ar4
+            group: ar4
+            mode: "0755"
+
+        # Копируем конфиг из шаблона и устанавливаем права на фаил
+        - name: Deploy fish aliases config from template
+          template:
+            src: 08.6_config_fish_alias.j2
+            dest: "{{ fish_config_path }}"
+            owner: ar4
+            group: ar4
+            mode: "0644"
+      tags: deploy-fish-config
+
+    - block:
+        # Применяем новую конфигурацию fish
+        - name: Reload fish configuration
+          shell:
+            cmd: source {{ fish_config_path }}
+            executable: /usr/bin/fish
+
+        # Уведомление об успешном обновлении
+        - name: Notify fish config updated
+          debug:
+            msg: "Конфигурация fish успешно обновлена"
+      tags: reload-fish-config
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 08.5_add_alias_j2.yml --ask-become-pass

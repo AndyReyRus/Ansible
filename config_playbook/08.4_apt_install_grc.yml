@@ -1,0 +1,43 @@
+---
+- name: Install packages
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Устанавливаем grc
+        - name: Install grc
+          apt:
+            name: grc
+            state: latest
+      tags: install-grc
+
+    - block:
+        # Смотрим все конфиги которые поддерживает grc
+        - name: List available grc configs
+          shell: |
+            ls -l /usr/share/grc/conf.*
+          register: grc_configs
+          ignore_errors: yes
+
+        - name: Display available grc configs
+          debug:
+            var: grc_configs.stdout_lines
+      tags: list-conf-grc
+
+    - block:
+        # Создаем директорию для конфигов grc
+        - name: Create grc config directory
+          file:
+            path: /home/ar4/.config/grc
+            state: directory
+            mode: "0755"
+
+        # Копируем все конфиги grc через shell
+        - name: Copy all grc configs
+          synchronize:
+            src: /usr/share/grc/
+            dest: /home/ar4/.config/grc/
+            recursive: yes
+      tags: copy-conf-grc
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 08.4_apt_install_grc.yml --ask-become-pass

@@ -1,0 +1,62 @@
+---
+- name: Configure static IP inside LXC container
+  hosts: lxc-container-hostname # Указываешь имя/IP контейнера
+  become: yes
+
+  vars:
+    interface: "eth0"
+    static_ip: "192.168.1.100/24"
+    gateway: "192.168.1.1"
+    dns_servers:
+      - "8.8.8.8"
+      - "8.8.4.4"
+
+  tasks:
+    - block:
+        # Бэкап текущего netplan конфига (если есть)
+        - name: Backup netplan config if exists
+          copy:
+            src: /etc/netplan/50-cloud-init.yaml
+            dest: /etc/netplan/50-cloud-init.yaml.backup_{{ ansible_date_time.epoch }}
+            remote_src: yes
+          register: backup_result
+          failed_when: false
+      tags: backup-configure-static
+
+    - block:
+        # Создаем netplan конфиг для статического IP
+        - name: Create static IP netplan config
+          copy:
+            dest: /etc/netplan/50-cloud-init.yaml
+            content: |
+              network:
+                version: 2
+                renderer: networkd
+                ethernets:
+                  {{ interface }}:
+                    dhcp4: no
+                    addresses:
+                      - {{ static_ip }}
+                    gateway4: {{ gateway }}
+                    nameservers:
+                      addresses:
+                        - {{ dns_servers[0] }}
+                        - {{ dns_servers[1] }}
+            mode: "0644"
+
+        # Применяем netplan
+        - name: Apply netplan configuration
+          command: netplan apply
+      tags: apply-configure-static
+
+    - block:
+        # Проверяем настройки
+        - name: Verify network configuration
+          command: ip addr show {{ interface }}
+          register: ip_check
+
+        - name: Display network info
+          debug:
+            var: ip_check.stdout_lines
+      tags: check-configure-static
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 20.2_add_static_lxc.yml --ask-become-pass

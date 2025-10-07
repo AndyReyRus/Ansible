@@ -1,0 +1,41 @@
+---
+- name: Check network configuration
+  hosts: prox-vm-test-ansible
+  #become: yes
+
+  tasks:
+    - block:
+        # Показываем сетевые интерфейсы и IP адреса
+        - name: Show network interfaces
+          command: ip a
+          register: ip_output
+
+        # Выводим информацию о сетевых интерфейсах
+        - name: Display network interfaces
+          debug:
+            var: ip_output.stdout_lines
+      tags: check-interface
+
+    - block:
+        # Показываем таблицу маршрутизации
+        - name: Show routing table
+          command: ip route
+          register: route_output
+
+        # Выводим таблицу маршрутизации
+        - name: Display routing table
+          debug:
+            var: route_output.stdout_lines
+      tags: check-network
+
+    - block:
+        # Показываем открытые сетевые порты
+        - name: Show listening ports
+          command: ss -tulpn
+          register: ss_output
+
+        # Выводим открытые порты
+        - name: Display listening ports
+          debug:
+            var: ss_output.stdout_lines
+      tags: check-ports

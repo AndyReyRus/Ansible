@@ -1,0 +1,28 @@
+---
+- name: Check Docker and Docker Compose versions
+  hosts: prox-vm-test-ansible
+  #become: yes
+
+  vars:
+    target_user: ar4
+
+  tasks:
+    - block:
+        # Проверка версии установленного Docker
+        - name: Get installed Docker version
+          command: docker --version
+          register: docker_version
+
+        - name: Display installed Docker version
+          debug:
+            msg: "{{ docker_version.stdout_lines }}"
+
+        # Проверка версии установленного Docker Compose
+        - name: Get installed Docker Compose version
+          command: docker compose version
+          register: docker_compose_version
+
+        - name: Display installed Docker Compose version
+          debug:
+            msg: "{{ docker_compose_version.stdout_lines }}"
+      tags: check-docker-versions

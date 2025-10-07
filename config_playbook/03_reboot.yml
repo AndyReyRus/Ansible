@@ -1,0 +1,15 @@
+---
+- name: Reboot server immediately
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Перезагрузка сервера с ожиданием его возвращения
+        - name: Reboot the server and wait for it to come back
+          reboot:
+            # reboot_timeout: 600      - Максимальное время ожидания поднятия сервера
+            pre_reboot_delay: 0 #      - Не ждём, перезагрузка сразу
+            post_reboot_delay: 30 #    - Ожидание 30 секунд после перезагрузки перед проверкой
+            test_command: whoami #     - Команда для проверки доступности после перезагрузки
+      tags: reboot

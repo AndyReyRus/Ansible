@@ -1,0 +1,71 @@
+---
+- name: Install packages
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Устанавливаем зависимости для работы со шрифтами
+        - name: Install required packages
+          apt:
+            name:
+              - tar
+              - gzip
+              - unzip
+              - curl
+            state: latest
+      tags: install-deps
+
+    - block:
+        # Создаем директорию для шрифтов
+        - name: Create fonts directory
+          file:
+            path: /home/ar4/.local/share/fonts
+            state: directory
+            mode: "0755"
+            owner: ar4
+            group: ar4
+      tags: create-fonts-dir
+
+    - block:
+        # Скачиваем шрифт JetBrainsMono Nerd Font
+        - name: Download JetBrainsMono Nerd Font
+          get_url:
+            url: https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz
+            dest: /home/ar4/.local/share/fonts/JetBrainsMono.tar.xz
+            owner: ar4
+            group: ar4
+
+        # Распаковываем шрифт
+        - name: Extract JetBrainsMono font
+          unarchive:
+            src: /home/ar4/.local/share/fonts/JetBrainsMono.tar.xz
+            dest: /home/ar4/.local/share/fonts/
+            remote_src: yes
+            owner: ar4
+            group: ar4
+
+        # Удаляем архив после распаковки
+        - name: Remove font archive
+          file:
+            path: /home/ar4/.local/share/fonts/JetBrainsMono.tar.xz
+            state: absent
+
+        # Обновляем кэш шрифтов
+        - name: Update font cache
+          command: fc-cache -fv
+      tags: download-font
+
+    - block:
+        # Проверяем установку шрифта
+        - name: Verify font installation
+          command: fc-list | grep -i "JetBrains Mono"
+          register: font_check
+          failed_when: false
+
+        # Выводим результат проверки шрифтов
+        - name: Display font check result
+          debug:
+            var: font_check.stdout_lines
+      tags: verify-font
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 18_font_install.yml --ask-become-pass

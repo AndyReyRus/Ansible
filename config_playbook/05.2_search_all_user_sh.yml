@@ -1,0 +1,27 @@
+---
+- name: Get all users with shell access
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Получение списка всех пользователей с доступом к shell
+        - name: Get users with shell access
+          shell: |
+            grep -E ':(/bin/|/usr/bin/).*sh' /etc/passwd | cut -d: -f1
+          register: shell_users
+          changed_when: false
+
+        # Вывод списка пользователей с shell доступом
+        - name: Display users with shell access
+          debug:
+            msg: "Пользователи с доступом к shell:"
+          tags: debug
+
+        - name: Display each user
+          debug:
+            msg: "- {{ item }}"
+          loop: "{{ shell_users.stdout_lines }}"
+          tags: debug
+      tags: shell-users
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 04_change_pass.yml --ask-become-pass

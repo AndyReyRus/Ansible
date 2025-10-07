@@ -1,0 +1,6 @@
+#ansible_user                 : root
+#ansible_ssh_private_key_file : /home/ar4/.ssh/rsa_ger_ar4sv.test_book
+#environment                  : PRODUCTION
+#owner                        : AndyRey
+
+# По причине того что у меня для каждого сервера уникальный ssh key придется создавать переменные на каждый сервр!

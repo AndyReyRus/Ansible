@@ -1,0 +1,58 @@
+---
+- name: System update and user setup
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  vars_prompt:
+    # Интерактивно запрашиваем у пользователя пароль для переменной ar5_password
+    - name: ar5_password
+      prompt: "Enter password for user ar5"
+      private: yes
+
+  tasks:
+    - block:
+        # Создание пользователя ar5 с домашней директорией
+        - name: Create user ar5 with home and bash shell
+          user:
+            name: ar5
+            state: present
+            groups: sudo
+            append: yes
+            shell: /bin/bash
+            create_home: yes
+
+        # Установка пароля для пользователя ar5
+        - name: Changing password user ar5
+          user:
+            name: ar5
+            password: "{{ ar5_password | password_hash('sha512') }}"
+      tags: create-user
+
+    - block:
+        # Проверка пользователя ar5 в системе
+        - name: Show ar5 user entry from /etc/passwd
+          command: grep '^ar5:' /etc/passwd
+          register: ar5_passwd
+          changed_when: false
+          ignore_errors: yes
+
+        # Вывод информации о пользователе ar5
+        - name: Display passwd entry for ar5
+          debug:
+            var: ar5_passwd.stdout
+      tags: user-verify
+
+    - block:
+        # Проверка групп пользователя ar5
+        - name: Get groups of user ar5
+          command: groups ar5
+          register: ar5_groups
+          changed_when: false
+          ignore_errors: yes
+
+        # Вывод групп пользователя ar5
+        - name: Display groups of ar5
+          debug:
+            var: ar5_groups.stdout
+      tags: groups-verify
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 05.4_adduser.yml --ask-become-pass

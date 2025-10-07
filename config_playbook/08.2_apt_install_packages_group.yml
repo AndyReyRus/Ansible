@@ -1,0 +1,105 @@
+---
+- name: Install grouped packages
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  vars:
+    # Компиляторы и инструменты сборки
+    pkg_dev_tools:
+      - gcc
+      - perl
+      - make
+      - curl
+      - wget
+      - git
+      - tree
+      - openssh-server
+      - build-essential
+
+    # Системные и мониторинговые утилиты
+    pkg_sys_tools:
+      - htop
+      - iftop
+      - iotop
+      - glances
+      - dstat
+      - nmon
+      - mc
+      - ncdu
+      - neofetch
+      - inxi
+
+    # Сетевые инструменты и диагностика
+    pkg_net_tools:
+      - mtr
+      - sysstat
+      - net-tools
+      - iproute2
+      - iperf3
+      - tcpdump
+      - nmap
+      - traceroute
+      - nethogs
+      - ethtool
+      - ipcalc
+
+    # Редакторы и оболочки
+    pkg_edit_shells:
+      - nano
+      - vim
+      - micro
+      - fish
+      - python3
+
+    # Архиваторы и утилиты для работы с сжатием
+    pkg_arc_tools:
+      - tar
+      - unzip
+      - bzip2
+
+    # Безопасность
+    pkg_sec_tools:
+      - ufw
+      - fail2ban
+
+    # VPN
+    pkg_vpn_tools:
+      - openvpn
+      - wireguard
+
+    # Веб-сервер и инструменты для HTTPS
+    pkg_web_tools:
+      - nginx
+      - apache2-utils
+      - certbot
+      - python3-certbot-nginx
+
+    # Объединённый список всех пакетов
+    packages_all: "{{ pkg_dev_tools
+      + pkg_sys_tools
+      + pkg_net_tools
+      + pkg_edit_shells
+      + pkg_arc_tools
+      + pkg_sec_tools
+      + pkg_vpn_tools
+      + pkg_web_tools }}"
+
+  tasks:
+    - block:
+        # Обновляем индекс локального репозитория
+        - name: Update apt cache
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+      tags: update-cache
+
+    - block:
+        # Устанаваливаем необходимые группы пакетов
+        - name: Install required packages (grouped)
+          apt:
+            name: "{{ packages_all }}"
+            state: latest # Если нужно установить или обновить установленный пакет до последней версии
+            # state: present                                  # Если нужно проверить наличие пакета без обновления до последней версии
+            # force: yes                                      # Только если нужно принудительно установить или обновить пакет
+      tags: install-packages
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 08.2_apt_install_packages_group.yml --ask-become-pass

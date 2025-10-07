@@ -1,0 +1,17 @@
+---
+- name: Installation configuration Kubernetes Master node and obtaining a join token - via the kubeadm utility.
+  hosts: #all
+  become: yes
+
+  tasks:
+    - block:
+        # Обновляем индекс локального репозитория и обновляем пакеты
+        - name: Update apt package cache and upgrade packages
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+            upgrade: yes
+            autoremove: yes
+            autoclean: yes
+      
+

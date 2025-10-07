@@ -1,0 +1,143 @@
+---
+# Более предпочтительный вариант настроек управления ssh конфигурацией!
+- name: System update and user setup
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  vars:
+    ssh_user: ar4
+    ssh_port: 7681
+    sshd_config_path: /etc/ssh/sshd_config
+    cloud_init_conf: /etc/ssh/sshd_config.d/50-cloud-init.conf
+    sshd_custom_conf: /etc/ssh/sshd_config.d/ar4custom.conf
+
+  tasks:
+    - block:
+        # Настройка прав доступа для SSH директории и файлов
+        - name: Set correct permissions on ~/.ssh directory
+          file:
+            path: "/home/{{ ssh_user }}/.ssh"
+            state: directory
+            mode: "0700"
+            owner: "{{ ssh_user }}"
+            group: "{{ ssh_user }}"
+
+        # Установка прав на файл authorized_keys
+        - name: Set correct permissions on authorized_keys
+          file:
+            path: "/home/{{ ssh_user }}/.ssh/authorized_keys"
+            state: file
+            mode: "0600"
+            owner: "{{ ssh_user }}"
+            group: "{{ ssh_user }}"
+
+        # Вывод содержимого директории ~/.ssh
+        - name: List ~/.ssh contents
+          command: ls -la /home/{{ ssh_user }}/.ssh
+          register: ssh_dir_list
+
+        - name: Show contents of ~/.ssh directory
+          debug:
+            msg: "{{ ssh_dir_list.stdout_lines }}"
+      tags: ssh-permissions
+
+    - block:
+        # Переименовываем основной конфиг в backup (полностью убираем старый конфиг)
+        - name: Rename main sshd_config to backup
+          command:
+            cmd: mv "{{ sshd_config_path }}" "{{ sshd_config_path }}.backup_{{ ansible_date_time.iso8601_basic }}"
+            creates: "{{ sshd_config_path }}.backup_{{ ansible_date_time.iso8601_basic }}"
+
+        # Создаем новый минимальный основной конфиг
+        - name: Create new minimal sshd_config with Include
+          copy:
+            dest: "{{ sshd_config_path }}" # Создаем новый - Основноый - минимальный конфиг - /etc/ssh/sshd_config
+            content: |
+              # Managed by Ansible
+              # Original config backed up as: {{ sshd_config_path }}.backup_{{ ansible_date_time.iso8601_basic }}
+              Include /etc/ssh/sshd_config.d/*.conf
+            owner: root
+            group: root
+            mode: "0644"
+          notify: Restart ssh
+      tags: ssh-backup
+
+    - block:
+        # Создаем кастомный конфиг sshd в sshd_config.d с нужными настройками
+        - name: Deploy custom sshd config fragment
+          copy:
+            dest: "{{ sshd_custom_conf }}" # Создаем конфиг пользователя в директории - /etc/ssh/sshd_config.d/ar4custom.conf
+            content: |
+              # Managed by Ansible
+              Port {{ ssh_port }}
+              PermitRootLogin no
+              AllowUsers {{ ssh_user }}
+              # Authentication
+              PubkeyAuthentication yes
+              AuthorizedKeysFile .ssh/authorized_keys
+              PasswordAuthentication no
+              PermitEmptyPasswords no
+              ClientAliveInterval 300
+              ClientAliveCountMax 3
+              # Security hardening          - Общие настройки безопасности
+              # Protocol 2                          # Использовать только SSH protocol 2 (более безопасный)
+              # HostbasedAuthentication no          # Отключить аутентификацию по хосту (устаревший метод)
+              # IgnoreRhosts yes                    # Игнорировать файлы .rhosts и .shosts (устаревшие)
+              # X11Forwarding no                    # Отключить X11 forwarding (графические приложения)
+              # PrintMotd no                        # Не показывать Message of the Day при входе
+              # PrintLastLog yes                    # Показывать время последнего входа
+              # TCPKeepAlive yes                    # Поддерживать TCP соединение alive
+              # MaxAuthTries 3                      # Максимум 3 попытки аутентификации
+              # MaxSessions 5                       # Максимум 5 одновременных SSH сессий
+              # LoginGraceTime 60                   # Таймаут аутентификации 60 секунд
+            owner: root
+            group: root
+            mode: "0644"
+          notify: Restart ssh
+      tags: ssh-custom-config
+
+    - block:
+        # Проверяем наличие дополнительного sshd конфигурационного файла cloud-init
+        - name: Check if cloud-init sshd config file exists
+          stat:
+            path: "{{ cloud_init_conf }}"
+          register: cloud_init_conf_stat
+
+        # Если файл cloud-init существует, заменяем его конфигурацией и перезапускаем ssh
+        - name: Replace cloud-init sshd config file, if it exists
+          copy:
+            dest: "{{ cloud_init_conf }}"
+            content: |
+              # Managed by Ansible
+              PasswordAuthentication no
+            owner: root
+            group: root
+            mode: "0644"
+          when: cloud_init_conf_stat.stat.exists
+          notify: Restart ssh
+      tags: cloud-init-config
+
+    - block:
+        # Останавливаем и отключаем socket ssh.socket, чтобы ssh запускался напрямую
+        - name: Stop and disable ssh.socket if active
+          systemd:
+            name: ssh.socket
+            state: stopped
+            enabled: no
+          ignore_errors: yes
+
+        # Если ssh.service активен, просто перезапускаем его
+        - name: Ensure ssh service is started and enabled
+          systemd:
+            name: ssh
+            state: started
+            enabled: yes
+      tags: ssh-service
+
+  # Перезапускаем ssh сервис при изменениях конфигурации
+  handlers:
+    - name: Restart ssh
+      systemd:
+        name: ssh
+        state: restarted
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 06.1_ssh_settings.yml --ask-become-pass

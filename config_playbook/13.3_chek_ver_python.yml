@@ -1,0 +1,19 @@
+---
+- name: Check Python version
+  hosts: prox-vm-test-ansible
+  #become: yes
+
+  vars:
+    target_user: ar4
+
+  tasks:
+    - block:
+        # Проверка версии установленного Python
+        - name: Get installed Python version
+          command: python3 --version
+          register: python_version
+
+        - name: Display installed Python version
+          debug:
+            msg: "{{ python_version.stdout_lines }}"
+      tags: check-python-version

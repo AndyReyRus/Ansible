@@ -1,0 +1,60 @@
+---
+- name: Install packages
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Удаляем необходимыне пакеты
+        - name: Remove related packages
+          apt:
+            name:
+              - gcc
+              - perl
+              - make
+              - curl
+              - wget
+              - git
+              - tree
+              - openssh-server
+              - build-essential
+              - htop
+              - iftop
+              - iotop
+              - glances
+              - dstat
+              - nmon
+              - mc
+              - ncdu
+              - neofetch
+              - inxi
+              - mtr
+              - sysstat
+              - net-tools
+              - iproute2
+              - iperf3
+              - tcpdump
+              - nmap
+              - traceroute
+              - nethogs
+              - ethtool
+              - ipcalc
+              - nano
+              - vim
+              - micro
+              - fish
+              - python3
+              - tar
+              - unzip
+              - bzip2
+              - ufw
+              - fail2ban
+              - openvpn
+              - wireguard
+              - nginx
+              - apache2-utils
+              - certbot
+              - python3-certbot-nginx
+            state: absent
+      tags: remove-packages
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 10_apt_absent.yml --ask-become-pass

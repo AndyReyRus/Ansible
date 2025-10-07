@@ -1,0 +1,33 @@
+---
+- name: Install packages
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Обновляем индекс локального репозитория
+        - name: Update apt cache
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+      tags: update-cache
+
+    - block:
+        # Устанавливаем необходимые пакеты
+        - name: Install required packages
+          apt:
+            name:
+              - gcc
+              - perl
+              - make
+              - curl
+              - wget
+              - git
+              - tree
+              - openssh-server
+              - build-essential
+            state: latest # Если нужно установить или обновить установленный пакет до последней версии
+            # state: present                                  # Если нужно проверить наличие пакета без обновления до последней версии
+            # force: yes                                      # Только если нужно принудительно установить или обновить пакет
+      tags: install-packages
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 08.1_apt_install_start.yml --ask-become-pass

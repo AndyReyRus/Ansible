@@ -1,0 +1,57 @@
+---
+- name: Install packages
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Создаем swapfile
+        - name: Create swap file of 16G
+          command: fallocate -l 16G /swapfile
+          args:
+            creates: /swapfile
+
+        # Устанавливаем права на swap файл
+        - name: Set permissions 600 on swap file
+          file:
+            path: /swapfile
+            mode: "0600"
+
+        # Настраиваем swap пространство на файле
+        - name: Setup swap space on the file
+          command: mkswap /swapfile
+          register: mkswap_result
+          changed_when: "'swap signature' in mkswap_result.stdout or mkswap_result.rc == 0"
+
+        # Включаем swap на файле
+        - name: Enable swap on the file #            - Включаем swap на этом файле
+          command: swapon --discard /swapfile #      - Активируем swap с опцией оптимизации discard
+          register: swapon_result #                  - Регистрируем результат выполнения
+          changed_when: swapon_result.rc == 0 #      - Помечаем задачу как изменившую систему, если команда успешна
+          failed_when: false #                       - Игнорируем ошибку, если swap уже активен
+      tags: create-swapfile
+
+    - block:
+        # Добавляем запись в /etc/fstab
+        - name: Ensure swapfile entry in /etc/fstab
+          mount:
+            name: swap #                 - Тип монтирования — swap
+            src: /swapfile #             - Источник swap — файл
+            fstype: swap #               - Тип файловой системы swap
+            opts: defaults,discard #     - Опции монтирования по умолчанию с discard
+            state: present #             - Запись должна присутствовать (создать если нет)
+      tags: edit-fstab
+
+    - block:
+        # Показываем текущие swap устройства
+        - name: Show current swap devices
+          command: swapon --show
+          register: swapon_show
+          failed_when: false
+
+        # Выводим информацию о swap устройствах в столбик
+        - name: Display swap devices info
+          debug:
+            var: swapon_show.stdout_lines
+      tags: check-swapon
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 17.1_swapfile_add.yml --ask-become-pass

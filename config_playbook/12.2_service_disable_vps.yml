@@ -1,0 +1,90 @@
+---
+- name: Disable unnecessary services
+  hosts: SERV_GERMANY # ВНИМАНИЕ - Указана группа серверов
+  become: yes
+
+  tasks:
+    - block:
+        # Отключаем snapd.socket (редко используется на серверах)
+        - name: Stop and disable snapd.socket
+          systemd:
+            name: snapd.socket
+            state: stopped
+            enabled: no
+            masked: no
+
+        # Проверяем статус snapd.socket после отключения
+        - name: Check snapd.socket status
+          command: systemctl status snapd.socket
+          register: snapd_status
+          failed_when: false
+
+        # Выводим статус snapd.socket
+        - name: Display snapd.socket status
+          debug:
+            var: snapd_status.stdout_lines
+      tags: disable-snapd
+
+    - block:
+        # Отключаем multipathd.socket (не нужно без multipath устройств)
+        - name: Disable multipathd.socket
+          systemd:
+            name: multipathd.socket
+            state: stopped
+            enabled: no
+            masked: no
+
+        # Проверяем статус multipathd.socket после отключения
+        - name: Check multipathd.socket status
+          command: systemctl status multipathd.socket
+          register: multipathd_status
+          failed_when: false
+
+        # Выводим статус multipathd.socket
+        - name: Display multipathd.socket status
+          debug:
+            var: multipathd_status.stdout_lines
+      tags: disable-multipathd
+
+    - block:
+        # Отключаем ненужные сервисы для VPS
+        - name: Disable unnecessary VPS services
+          systemd:
+            name: "{{ item }}"
+            state: stopped
+            enabled: no
+            masked: no
+          loop:
+            - fwupd.service #                 Обновление firmware (не нужно на VPS)
+            - glances.service #               Мониторинг (если не используется)
+            - pmcd.service #                  Performance Co-Pilot
+            - pmie.service #                  Performance Co-Pilot
+            - pmie_farm.service #             Performance Co-Pilot
+            - pmlogger.service #              Performance Co-Pilot
+            - pmlogger_farm.service #         Performance Co-Pilot
+            - pmproxy.service #               Performance Co-Pilot
+            - ModemManager.service #          Менеджер модемов (не нужно на VPS)
+            - multipathd.service #            Multipath устройства (не нужно на VPS)
+            - udisks2.service #               Управление дисками (не нужно на серверах)
+            - upower.service #                Управление питанием (не нужно на VPS)
+
+        # Проверяем статус отключенных сервисов
+        - name: Check disabled services status
+          command: systemctl status "{{ item }}"
+          loop:
+            - fwupd.service
+            - glances.service
+            - pmcd.service
+            - ModemManager.service
+            - multipathd.service
+            - udisks2.service
+            - upower.service
+          register: services_status
+          failed_when: false
+
+        # Выводим статусы отключенных сервисов
+        - name: Display disabled services status
+          debug:
+            var: services_status.results[].stdout_lines
+      tags: disable-vps-services
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 12.2_service_disable_vps.yml --ask-become-pass

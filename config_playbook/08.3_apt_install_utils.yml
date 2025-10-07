@@ -1,0 +1,47 @@
+---
+- name: Install packages
+  hosts: prox-vm-test-ansible
+  become: yes
+
+  tasks:
+    - block:
+        # Обновляем индекс локального репозитория
+        - name: Update apt cache
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+
+    - block:
+        # Устанавливаем необходимые утилиты
+        - name: Install required utilities
+          apt:
+            name:
+              - mc
+              - lsd
+              - bat
+              - duf
+              - tldr
+              - htop
+              - btop
+              - iftop
+              - ncdu
+              - gping
+              - ranger
+              - eza
+              - micro
+              - nnn
+              - vifm
+              - ripgrep
+              - zoxide
+              - delta
+              - tmux
+              - fzf
+              - sd
+              - hyperfine
+              - tealdeer
+              - asciinema
+            state: latest # Если нужно установить или обновить установленный пакет до последней версии
+            # state: present                                  # Если нужно проверить наличие пакета без обновления до последней версии
+            # force: yes                                      # Только если нужно принудительно установить или обновить пакет
+      tags: install-utilities
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 08.3_apt_install_utils.yml --ask-become-pass
