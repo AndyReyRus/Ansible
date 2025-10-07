@@ -1,0 +1,87 @@
+---
+- name: Install Docker via official installation script and configure user and service
+  hosts: prox-vm-test-ansible
+  # hosts: all
+  become: yes
+
+  tasks:
+    - block:
+        # Обновляем индекс локального репозитория
+        - name: Update apt package cache
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+      tags: update-cache
+
+    - block:
+        # Создаем директорибю проекта в который поместим наш скрипт установки Docker
+        - name: Create directory for Docker install script
+          file:
+            path: /home/ar4/tools/docker
+            state: directory
+            mode: "0755"
+      tags: create-docker-dir
+
+    - block:
+        # Загружаем официальный скрипт установки Docker
+        - name: Download Docker install script
+          get_url:
+            url: https://get.docker.com
+            dest: /home/ar4/tools/docker/get-docker.sh
+            mode: "0755"
+
+        # Устанавливаем Docker с помощью скрипта
+        - name: Run official Docker installation script
+          command: sh /home/ar4/tools/docker/get-docker.sh
+          args:
+            creates: /usr/bin/docker
+
+        # Проверяем установленные версии Docker
+        - name: Check docker version
+          command: docker --version
+          register: docker_version
+          changed_when: false
+
+        - name: Display docker version
+          debug:
+            var: docker_version.stdout
+
+        # Проверяем установленные версии Docker Compose
+        - name: Check docker compose version
+          command: docker compose version
+          register: docker_compose_version
+          changed_when: false
+
+        - name: Display docker compose version
+          debug:
+            var: docker_compose_version.stdout
+      tags: install-docker-script
+
+    - block:
+        # Добавляем пользователя ar4 в группу docker
+        - name: Add user ar4 to docker group
+          user:
+            name: ar4
+            groups: docker
+            append: yes
+
+        # Проверяем в каких группах состоит пользователь ar4
+        - name: Check groups for user ar4
+          command: groups ar4
+          register: user_groups
+          changed_when: false
+
+        - name: Display groups for user ar4
+          debug:
+            var: user_groups.stdout
+      tags: user-group-docker
+
+    - block:
+        # Запускаем и ставим в автозагрузку сервис Docker
+        - name: Ensure Docker service is started and enabled
+          systemd:
+            name: docker
+            state: started
+            enabled: yes
+      tags: start-docker-service
+# Если команда смены пароля не сработает нужно запустить команду - ansible-playbook 15.1_docker_install.yml --ask-become-pass
